@@ -1,4 +1,3 @@
-import uvicorn
 from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.responses import JSONResponse, RedirectResponse
 
