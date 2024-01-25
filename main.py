@@ -1,11 +1,9 @@
 from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.responses import JSONResponse, RedirectResponse
 
-from services import InvoiceService, get_invoice_service
+from services import InvoiceService, get_invoice_service, order_mapping
 
 app = FastAPI()
-
-possible_ordering = ["id", "lines_count", "total_sum"]
 
 
 @app.get("/")
@@ -21,8 +19,8 @@ async def list_invoices(
     total_sum_gte: float = Query(ge=0, default=None),
     total_sum_lte: float = Query(ge=0, default=None),
 ):
-    if order and order not in possible_ordering:
-        raise HTTPException(status_code=400, detail=f"order must take one of the values {possible_ordering}")
+    if order and order not in list(order_mapping.keys()):
+        raise HTTPException(status_code=400, detail=f"order must take one of the values {list(order_mapping.keys())}")
 
     invoice_list = await invoice_service.list(ordering=order, total_sum_gte=total_sum_gte, total_sum_lte=total_sum_lte)
 

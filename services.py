@@ -2,12 +2,18 @@ from collections import namedtuple
 
 from fastapi import Depends
 from fastapi.encoders import jsonable_encoder
-from sqlalchemy import desc
+from sqlalchemy import desc, select
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import joinedload
 
 from db import BaseService, get_engine
 from models import Invoice as InvoiceModel
+
+order_mapping = {
+    "id": "id",
+    "lines_count": "total_lines",
+    "total_sum": "total_sum"
+}
 
 
 class InvoiceService(BaseService):
@@ -31,15 +37,12 @@ class InvoiceService(BaseService):
 
         with self.get_session() as session:
             with session.begin():
-                query = session.query(InvoiceModel).options(joinedload(InvoiceModel.invoice_lines))
+                query = select(InvoiceModel).options(joinedload(InvoiceModel.invoice_lines))
 
                 # если нужно, добавляем сортировку
-                if ordering == "id":
-                    query = query.order_by(desc(InvoiceModel.id))
-                elif ordering == "lines_count":
-                    query = query.order_by(desc(InvoiceModel.total_lines))
-                elif ordering == "total_sum":
-                    query = query.order_by(desc(InvoiceModel.total_sum))
+                if ordering:
+                    col = getattr(InvoiceModel, order_mapping.get(ordering))
+                    query = query.order_by(desc(col))
 
                 # если нужно, фильтруем данные по total_sum
                 if total_sum_gte:
@@ -47,7 +50,8 @@ class InvoiceService(BaseService):
                 if total_sum_lte:
                     query = query.filter(InvoiceModel.discount_sum <= total_sum_lte)
 
-                invoice_info = query.all()
+                result = session.execute(query)
+                invoice_info = result.scalars().unique()
 
             for obj in invoice_info:
                 # подготовка InvoiceLine
